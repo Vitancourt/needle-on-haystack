@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { EYE_HEIGHT, GROUND_HALF, PLAYER_MIN_RADIUS, PLAYER_START_Z } from './constants.ts';
+import { BARN_HALF, EYE_HEIGHT, STALL_DEPTH, PLAYER_MIN_RADIUS, PLAYER_START_Z } from './constants.ts';
 
 const WALK_SPEED = 4;
 const SPRINT_SPEED = 7;
@@ -52,8 +52,9 @@ export class Player {
   private clamp(): void {
     const p = this.camera.position;
     p.y = EYE_HEIGHT;
-    const limit = GROUND_HALF - 1;
-    p.x = THREE.MathUtils.clamp(p.x, -limit, limit);
+    const limit = BARN_HALF - 0.8;
+    const limitX = BARN_HALF - STALL_DEPTH - 0.3;
+    p.x = THREE.MathUtils.clamp(p.x, -limitX, limitX);
     p.z = THREE.MathUtils.clamp(p.z, -limit, limit);
     const dist = Math.hypot(p.x, p.z);
     if (dist < PLAYER_MIN_RADIUS) {

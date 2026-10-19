@@ -39,6 +39,7 @@ export class Haystack {
       this.mesh.setColorAt(i, color);
     }
     this.mesh.frustumCulled = false;
+    this.mesh.receiveShadow = true;
     this.group.add(this.mesh);
 
     // Solid core just under the surface so you can't see through gaps.
@@ -52,6 +53,8 @@ export class Haystack {
       new THREE.MeshLambertMaterial({ color: 0x6b5120, side: THREE.DoubleSide }),
     );
     core.position.y = 0.01;
+    core.castShadow = true;
+    core.receiveShadow = true;
     this.group.add(core);
   }
 
