@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Needle on Haystack</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪡</text></svg>" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <span id="hud-level">Level 1</span>
+        <span id="hud-timer">2:00</span>
+      </div>
+      <div id="crosshair"></div>
+      <div class="hud-keys">WASD move · Shift sprint · Click to grab · Esc pause · M mute</div>
+    </div>
+
+    <div id="overlay" hidden role="dialog" aria-live="polite">
+      <div class="panel">
+        <h1 id="ov-title"></h1>
+        <div id="ov-body"></div>
+        <button id="ov-btn" type="button"></button>
+      </div>
+    </div>
+
+    <div id="toast" role="status"></div>
+    <noscript>This game needs JavaScript.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
