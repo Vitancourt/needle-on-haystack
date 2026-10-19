@@ -25,7 +25,8 @@ export class Needle {
   private hint: THREE.Sprite | null = null;
   private t = 0;
 
-  constructor(cfg: LevelConfig) {
+  /** `place: false` leaves positioning to the caller (the physics mode). */
+  constructor(cfg: LevelConfig, place = true) {
     const rand = mulberry32(cfg.seed ^ 0x9e3779b9);
 
     const color = HAY_COLOR.clone().lerp(SILVER, cfg.needleContrast);
@@ -48,8 +49,11 @@ export class Needle {
     );
     this.group.add(this.hitbox);
 
-    // Seeded placement: reachable from outside the pile, buried by `needleDepth`.
-    const r = MOUND_RADIUS * (0.45 + rand() * 0.45);
+    if (!place) return;
+
+    // Seeded placement on the lower flanks: reachable from the floor and never on the crown,
+    // which the player can't see from eye height.
+    const r = MOUND_RADIUS * (0.7 + rand() * 0.25);
     const theta = rand() * Math.PI * 2;
     const y = Math.max(0.12, moundHeightAt(r) - cfg.needleDepth);
     this.group.position.set(r * Math.cos(theta), y, r * Math.sin(theta));

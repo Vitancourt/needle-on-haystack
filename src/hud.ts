@@ -7,6 +7,12 @@ function el<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
 }
 
+export interface OverlayAction {
+  label: string;
+  onClick: () => void;
+  secondary?: boolean;
+}
+
 export class Hud {
   private readonly hud = el('hud');
   private readonly level = el('hud-level');
@@ -14,17 +20,22 @@ export class Hud {
   private readonly overlay = el('overlay');
   private readonly title = el('ov-title');
   private readonly body = el('ov-body');
-  private readonly button = el<HTMLButtonElement>('ov-btn');
+  private readonly actions = el('ov-actions');
+  private readonly keys = el('hud-keys');
+  private readonly crosshair = el('crosshair');
   private readonly toastEl = el('toast');
   private toastTimer = 0;
-  private onButton: (() => void) | null = null;
-
-  constructor() {
-    this.button.addEventListener('click', () => this.onButton?.());
-  }
 
   showHud(visible: boolean): void {
     this.hud.hidden = !visible;
+  }
+
+  setKeys(text: string): void {
+    this.keys.textContent = text;
+  }
+
+  setHolding(holding: boolean): void {
+    this.crosshair.classList.toggle('holding', holding);
   }
 
   setLevel(n: number): void {
@@ -36,7 +47,7 @@ export class Hud {
     this.timer.classList.toggle('low', seconds <= 10);
   }
 
-  showOverlay(title: string, lines: { text: string; strong?: boolean }[], button: string, onClick: () => void): void {
+  showOverlay(title: string, lines: { text: string; strong?: boolean }[], actions: OverlayAction[]): void {
     this.title.textContent = title;
     this.body.replaceChildren(
       ...lines.map((l) => {
@@ -46,15 +57,29 @@ export class Hud {
         return p;
       }),
     );
-    this.button.textContent = button;
-    this.onButton = onClick;
+    this.actions.className = 'actions';
+    this.actions.replaceChildren(
+      ...actions.map((a) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a.label;
+        if (a.secondary) b.className = 'secondary';
+        b.addEventListener('click', a.onClick);
+        return b;
+      }),
+    );
     this.overlay.hidden = false;
-    this.button.focus();
+    this.actions.querySelector('button')?.focus();
+  }
+
+  /** Replace the text of the first overlay line (used for progress). */
+  setOverlayLine(text: string): void {
+    const first = this.body.firstElementChild;
+    if (first) first.textContent = text;
   }
 
   hideOverlay(): void {
     this.overlay.hidden = true;
-    this.onButton = null;
   }
 
   toast(message: string): void {

@@ -1,5 +1,6 @@
 export interface Save {
   highestLevel: number;
+  highestLevelMovable: number;
   bestTimes: Record<string, number>;
   muted: boolean;
 }
@@ -7,7 +8,7 @@ export interface Save {
 const KEY = 'needle-on-haystack:v1';
 
 export function loadSave(): Save {
-  const fallback: Save = { highestLevel: 0, bestTimes: {}, muted: false };
+  const fallback: Save = { highestLevel: 0, highestLevelMovable: 0, bestTimes: {}, muted: false };
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fallback;

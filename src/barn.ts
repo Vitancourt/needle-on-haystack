@@ -118,7 +118,6 @@ export function createBarn(): THREE.Group {
 
   const stalls = createStalls();
   barn.add(stalls);
-  barn.userData.update = stalls.userData.update;
 
   // Structure casts shadows; the roof and gables don't, so daylight still reaches the floor.
   const noShadow = new Set<THREE.Object3D>([...barn.children.filter((o) => o.position.y > WH && o !== floor)]);

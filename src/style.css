@@ -63,12 +63,14 @@ html, body {
 .panel p { margin: 0 0 10px; line-height: 1.45; color: var(--muted); }
 .panel p.strong { color: var(--text); }
 
+.panel .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .panel button {
-  margin-top: 12px; padding: 12px 28px;
+  margin-top: 0; padding: 12px 28px;
   font: inherit; font-weight: 700; font-size: 1.05rem;
   background: var(--accent); color: var(--accent-text);
   border: 0; border-radius: 8px; cursor: pointer;
 }
+.panel button.secondary { background: transparent; color: var(--text); border: 1px solid rgba(224, 184, 74, 0.5); font-weight: 600; }
 .panel button:hover, .panel button:focus-visible { filter: brightness(1.12); outline: 2px solid var(--text); outline-offset: 2px; }
 
 #toast {
@@ -86,3 +88,5 @@ html, body {
   color: var(--text); background: rgba(0, 0, 0, 0.45);
   padding: 2px 6px; border-radius: 4px; pointer-events: none;
 }
+
+#crosshair.holding { background: rgba(255, 255, 255, 0.9); }

@@ -8,6 +8,9 @@ export interface World {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
+  barn: THREE.Object3D;
+  /** Decorative straw on the floor; hidden in the physics mode. */
+  looseHay: THREE.Object3D;
   /** Advance ambient animation (dust). */
   update(dt: number): void;
 }
@@ -67,10 +70,9 @@ export function createWorld(canvas: HTMLCanvasElement): World {
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
   const barn = createBarn();
-  scene.add(barn);
-  scene.add(createLooseHay());
+  const looseHay = createLooseHay();
+  scene.add(barn, looseHay);
 
-  let clock = 0;
   const dust = new Dust();
   scene.add(dust.points);
 
@@ -80,9 +82,7 @@ export function createWorld(canvas: HTMLCanvasElement): World {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  return { renderer, scene, camera, update: (dt) => {
-      clock += dt;
+  return { renderer, scene, camera, barn, looseHay, update: (dt) => {
       dust.update(dt);
-      barn.userData.update(clock);
     }, };
 }
