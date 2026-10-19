@@ -5,6 +5,8 @@ import { BARN_HALF, EYE_HEIGHT, STALL_DEPTH, PLAYER_MIN_RADIUS, PLAYER_START_Z }
 const WALK_SPEED = 4;
 const SPRINT_SPEED = 7;
 const MAX_PITCH = Math.PI / 2 - 0.01;
+/** Camera turn speed (radians per second) with the look stick fully pushed. */
+const LOOK_STICK_SPEED = 2.4;
 
 export class Player {
   readonly controls: PointerLockControls;
@@ -15,6 +17,8 @@ export class Player {
   blocked: ((x: number, z: number) => boolean) | null = null;
   /** Analog walk input from the touch joystick (x = right, y = forward, each -1..1). */
   readonly move = { x: 0, y: 0 };
+  /** Turn input from the touch look stick (x = right, y = up, each -1..1). */
+  readonly lookRate = { x: 0, y: 0 };
   /** Touch devices have no pointer lock; this stands in for it. */
   private touchActive = false;
   private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -62,6 +66,9 @@ export class Player {
 
   update(dt: number): void {
     if (!this.isLocked) return;
+    // Square the stick so small pushes aim finely and full pushes turn fast.
+    const { x: lx, y: ly } = this.lookRate;
+    if (lx || ly) this.look(lx * Math.abs(lx) * LOOK_STICK_SPEED * dt, -ly * Math.abs(ly) * LOOK_STICK_SPEED * dt);
     const k = this.keys;
     let forward = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
     let right = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);

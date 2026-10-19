@@ -12,12 +12,13 @@
     <div id="hud" hidden>
       <div class="hud-top">
         <span id="hud-level">Level 1</span>
-        <span id="hud-timer">2:00</span>
+        <span class="hud-time"><span id="hud-timer">0:00</span><span id="hud-best"></span></span>
       </div>
       <div id="crosshair"></div>
       <div class="hud-keys" id="hud-keys"></div>
       <div id="touch" class="touch-only">
-        <div id="stick"><div id="stick-knob"></div></div>
+        <div class="stick" id="stick-move"><div class="stick-knob"></div></div>
+        <div class="stick" id="stick-look"><div class="stick-knob"></div></div>
         <button type="button" id="touch-grab">Grab</button>
         <div class="touch-top">
           <button type="button" id="touch-pause" aria-label="Pause">Pause</button>

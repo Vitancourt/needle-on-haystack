@@ -18,13 +18,56 @@ function el<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
 }
 
-/** On-screen joystick (walk), drag anywhere else (look), and action buttons. */
+/** A virtual joystick: reports the knob offset as x (right) and y (up), each -1..1. */
+class Stick {
+  private readonly knob: HTMLElement;
+  private pointerId: number | null = null;
+
+  constructor(private readonly base: HTMLElement, private readonly onChange: (x: number, y: number) => void) {
+    this.knob = base.firstElementChild as HTMLElement;
+    base.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.pointerId = e.pointerId;
+      base.setPointerCapture(e.pointerId);
+      this.move(e);
+    });
+    base.addEventListener('pointermove', (e) => {
+      if (e.pointerId === this.pointerId) this.move(e);
+    });
+    const end = (e: PointerEvent) => {
+      if (e.pointerId === this.pointerId) this.reset();
+    };
+    base.addEventListener('pointerup', end);
+    base.addEventListener('pointercancel', end);
+  }
+
+  reset(): void {
+    this.pointerId = null;
+    this.knob.style.transform = '';
+    this.onChange(0, 0);
+  }
+
+  private move(e: PointerEvent): void {
+    const rect = this.base.getBoundingClientRect();
+    const radius = rect.width / 2;
+    let dx = e.clientX - (rect.left + radius);
+    let dy = e.clientY - (rect.top + radius);
+    const len = Math.hypot(dx, dy);
+    if (len > radius) {
+      dx *= radius / len;
+      dy *= radius / len;
+    }
+    this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    this.onChange(dx / radius, -dy / radius);
+  }
+}
+
+/** Two joysticks (left walks, right looks), drag anywhere else to look, and action buttons. */
 export class TouchControls {
   private readonly layer = el('touch');
-  private readonly stick = el('stick');
-  private readonly knob = el('stick-knob');
   private readonly grab = el<HTMLButtonElement>('touch-grab');
-  private stickId: number | null = null;
+  private readonly sticks: Stick[];
   private readonly lookPointers = new Map<number, { x: number; y: number }>();
 
   constructor(private readonly player: Player, actions: TouchActions) {
@@ -34,24 +77,16 @@ export class TouchControls {
     this.button('touch-pause', actions.onPause);
     this.button('touch-mute', actions.onMute);
 
-    this.stick.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.stickId = e.pointerId;
-      this.stick.setPointerCapture(e.pointerId);
-      this.moveStick(e);
-    });
-    this.stick.addEventListener('pointermove', (e) => {
-      if (e.pointerId === this.stickId) this.moveStick(e);
-    });
-    const endStick = (e: PointerEvent) => {
-      if (e.pointerId !== this.stickId) return;
-      this.stickId = null;
-      this.player.move.x = this.player.move.y = 0;
-      this.knob.style.transform = '';
-    };
-    this.stick.addEventListener('pointerup', endStick);
-    this.stick.addEventListener('pointercancel', endStick);
+    this.sticks = [
+      new Stick(el('stick-move'), (x, y) => {
+        player.move.x = x;
+        player.move.y = y;
+      }),
+      new Stick(el('stick-look'), (x, y) => {
+        player.lookRate.x = x;
+        player.lookRate.y = y;
+      }),
+    ];
 
     this.layer.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -76,10 +111,8 @@ export class TouchControls {
 
   /** Forget any fingers still down (e.g. when the game pauses). */
   reset(): void {
-    this.stickId = null;
     this.lookPointers.clear();
-    this.player.move.x = this.player.move.y = 0;
-    this.knob.style.transform = '';
+    for (const stick of this.sticks) stick.reset();
   }
 
   private button(id: string, onPress: () => void): void {
@@ -88,20 +121,5 @@ export class TouchControls {
       e.stopPropagation();
       onPress();
     });
-  }
-
-  private moveStick(e: PointerEvent): void {
-    const rect = this.stick.getBoundingClientRect();
-    const radius = rect.width / 2;
-    let dx = e.clientX - (rect.left + radius);
-    let dy = e.clientY - (rect.top + radius);
-    const len = Math.hypot(dx, dy);
-    if (len > radius) {
-      dx *= radius / len;
-      dy *= radius / len;
-    }
-    this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    this.player.move.x = dx / radius;
-    this.player.move.y = -dy / radius;
   }
 }

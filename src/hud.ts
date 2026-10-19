@@ -1,5 +1,5 @@
 export function formatTime(seconds: number): string {
-  const s = Math.max(0, Math.ceil(seconds));
+  const s = Math.max(0, Math.floor(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
@@ -17,6 +17,7 @@ export class Hud {
   private readonly hud = el('hud');
   private readonly level = el('hud-level');
   private readonly timer = el('hud-timer');
+  private readonly best = el('hud-best');
   private readonly overlay = el('overlay');
   private readonly title = el('ov-title');
   private readonly body = el('ov-body');
@@ -44,7 +45,11 @@ export class Hud {
 
   setTimer(seconds: number): void {
     this.timer.textContent = formatTime(seconds);
-    this.timer.classList.toggle('low', seconds <= 10);
+  }
+
+  /** The record to beat on this level, or nothing if it has never been cleared. */
+  setBest(seconds: number | undefined): void {
+    this.best.textContent = seconds === undefined ? '' : `Best ${formatTime(seconds)}`;
   }
 
   showOverlay(title: string, lines: { text: string; strong?: boolean }[], actions: OverlayAction[]): void {

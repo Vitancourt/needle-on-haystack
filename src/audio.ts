@@ -53,11 +53,6 @@ export class GameAudio {
     this.tone(1318, 0.12, 0.45, 'sine', 0.25);
   }
 
-  /** Low buzz. */
-  lost(): void {
-    this.tone(150, 0, 0.5, 'sawtooth', 0.15);
-  }
-
   private tone(freq: number, delay: number, dur: number, type: OscillatorType, vol: number): void {
     if (!this.ctx || !this.master) return;
     const t0 = this.ctx.currentTime + delay;

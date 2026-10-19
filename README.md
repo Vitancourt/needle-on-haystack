@@ -1,11 +1,12 @@
 # Needle on Haystack
 
-A first-person browser game built with three.js: walk around a haystack and find the hidden needle before the timer runs out. Each level adds more hay, a smaller needle, lower contrast, a deeper hiding spot and less time.
+A first-person browser game built with three.js: walk around a haystack and find the hidden needle as fast as you can. The timer counts up and your best time for each level is saved as the record to beat. Each level adds more hay, a smaller needle, lower contrast and a deeper hiding spot.
 
 **Modes** (chosen from the main menu): *Static haystack* is a solid pile you search by eye. *Movable haystack* simulates every strand with [Rapier](https://rapier.rs) physics: click hay to pick it up, click again to drop it anywhere in the barn, and click the needle to win.
 
 **Controls:** WASD walk · Shift sprint · mouse look · click to grab the needle · Esc pause · M mute.
-A faint glint appears near the needle if you've been searching for a while. Your best level and times are saved in `localStorage`.
+**On phones and tablets:** left stick walks · right stick looks (or drag anywhere) · Grab button · on-screen Pause and Sound buttons.
+A faint glint appears near the needle if you've been searching for a while. Your best times per level and your current level in each mode are saved in `localStorage`, so **Continue** on the main menu picks up where you left off.
 
 ## Run with Docker (no local Node needed)
 

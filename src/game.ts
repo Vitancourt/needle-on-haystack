@@ -3,7 +3,7 @@ import { GameAudio } from './audio.ts';
 import { PLAYER_MIN_RADIUS } from './constants.ts';
 import { Player } from './controls.ts';
 import { Haystack } from './haystack.ts';
-import { Hud, formatTime } from './hud.ts';
+import { Hud, formatTime, type OverlayAction } from './hud.ts';
 import { levelConfig, type LevelConfig } from './levels.ts';
 import { Needle } from './needle.ts';
 import { PhysicsHay } from './physicsHay.ts';
@@ -12,11 +12,9 @@ import { loadSave, writeSave } from './storage.ts';
 import { TouchControls, isTouchDevice } from './touch.ts';
 
 export type Mode = 'static' | 'movable';
-type State = 'menu' | 'loading' | 'playing' | 'paused' | 'won' | 'lost';
+type State = 'menu' | 'loading' | 'playing' | 'paused' | 'won';
 
 const MIN_DENSITY = 0.4;
-/** Pulling a pile apart takes longer than looking at one. */
-const MOVABLE_TIME_FACTOR = 1.5;
 
 const KEYS_HINT: Record<Mode, string> = {
   static: 'WASD move · Shift sprint · Click to grab the needle · Esc pause · M mute',
@@ -24,8 +22,8 @@ const KEYS_HINT: Record<Mode, string> = {
 };
 
 const TOUCH_HINT: Record<Mode, string> = {
-  static: 'Stick to walk · Drag to look · Aim at the needle and press Grab',
-  movable: 'Stick to walk · Drag to look · Grab picks up / drops hay · Grab the needle to win',
+  static: 'Left stick walks · Right stick looks · Aim at the needle and press Grab',
+  movable: 'Left stick walks · Right stick looks · Grab picks up / drops hay · Grab the needle to win',
 };
 
 export class Game {
@@ -45,7 +43,6 @@ export class Game {
   private cfg!: LevelConfig;
   private level = 1;
   private runSeed = 1;
-  private remaining = 0;
   private elapsed = 0;
   private hintShown = false;
   /** Invalidates an in-flight level build when the player leaves or restarts. */
@@ -93,7 +90,7 @@ export class Game {
 
   /** Debug/inspection handle. */
   get info() {
-    return { state: this.state, mode: this.mode, level: this.level, remaining: this.remaining, needle: this.needle?.position, cfg: this.cfg };
+    return { state: this.state, mode: this.mode, level: this.level, elapsed: this.elapsed, needle: this.needle?.position, cfg: this.cfg };
   }
 
   update(dt: number): void {
@@ -104,15 +101,13 @@ export class Game {
     this.player.update(dt);
     this.physics?.update(dt, this.world.camera);
     this.elapsed += dt;
-    this.remaining -= dt;
-    this.hud.setTimer(this.remaining);
+    this.hud.setTimer(this.elapsed);
 
     if (!this.hintShown && this.elapsed >= this.cfg.hintDelay) {
       this.hintShown = true;
       this.needle?.showHint();
       this.hud.toast('A faint glint appears...');
     }
-    if (this.remaining <= 0) this.lose();
     this.adaptQuality(dt);
   }
 
@@ -130,21 +125,29 @@ export class Game {
       this.buildStatic(1);
     }
     const lines = [
-      { text: 'A needle is hidden in the haystack. Find it before time runs out.', strong: true },
+      { text: 'A needle is hidden in the haystack. Find it as fast as you can.', strong: true },
       { text: 'Static: a solid pile to search with your eyes.' },
       { text: 'Movable: every strand is physical. Pick hay up, carry it, drop it anywhere.' },
       {
         text: this.touch
-          ? 'Use the stick to walk, drag to look, and the Grab button to interact.'
+          ? 'Left stick to walk, right stick to look, and the Grab button to interact.'
           : 'WASD to walk, mouse to look, click to interact. Esc pauses.',
       },
     ];
     const best = [this.save.highestLevel, this.save.highestLevelMovable];
     if (best[0] > 0 || best[1] > 0) lines.push({ text: `Your best: static level ${best[0]} · movable level ${best[1]}` });
-    this.hud.showOverlay('Needle on Haystack', lines, [
-      { label: 'Static haystack', onClick: () => this.requestLock(() => this.startRun('static')) },
-      { label: 'Movable haystack', onClick: () => this.requestLock(() => this.startRun('movable')) },
-    ]);
+    const resume = { static: this.save.currentLevel, movable: this.save.currentLevelMovable };
+    const actions: OverlayAction[] = [];
+    for (const mode of ['static', 'movable'] as const) {
+      const level = resume[mode];
+      if (level > 0) actions.push({ label: `Continue ${mode} · level ${level}`, onClick: () => this.requestLock(() => this.startRun(mode, level)) });
+    }
+    const hasContinue = actions.length > 0;
+    actions.push(
+      { label: hasContinue ? 'New static game' : 'Static haystack', onClick: () => this.requestLock(() => this.startRun('static')), secondary: hasContinue },
+      { label: hasContinue ? 'New movable game' : 'Movable haystack', onClick: () => this.requestLock(() => this.startRun('movable')), secondary: hasContinue },
+    );
+    this.hud.showOverlay('Needle on Haystack', lines, actions);
   }
 
   private pause(): void {
@@ -177,12 +180,13 @@ export class Game {
     if (record) this.save.bestTimes[key] = time;
     if (this.mode === 'static') this.save.highestLevel = Math.max(this.save.highestLevel, this.level);
     else this.save.highestLevelMovable = Math.max(this.save.highestLevelMovable, this.level);
-    writeSave(this.save);
+    this.saveProgress(this.level + 1);
     this.player.unlock();
     this.hud.showOverlay(
       'Found it!',
       [
         { text: `Level ${this.level} cleared in ${formatTime(time)}${record ? ' (new best!)' : ''}`, strong: true },
+        ...(prev !== undefined && !record ? [{ text: `Your record: ${formatTime(prev)}` }] : []),
         { text: 'The next needle will be harder to spot.' },
       ],
       [
@@ -190,18 +194,6 @@ export class Game {
         { label: 'Main menu', onClick: () => this.showMenu(), secondary: true },
       ],
     );
-  }
-
-  private lose(): void {
-    this.state = 'lost';
-    this.audio.stopAmbient();
-    this.audio.lost();
-    this.releaseHeld();
-    this.player.unlock();
-    this.hud.showOverlay("Time's up!", [{ text: `You reached level ${this.level}.`, strong: true }], [
-      { label: 'Retry', onClick: () => this.requestLock(() => this.startRun(this.mode)) },
-      { label: 'Main menu', onClick: () => this.showMenu(), secondary: true },
-    ]);
   }
 
   // ---- flow --------------------------------------------------------------
@@ -216,10 +208,17 @@ export class Game {
     return this.mode === 'static' ? String(level) : `movable:${level}`;
   }
 
-  private startRun(mode: Mode): void {
+  private startRun(mode: Mode, level = 1): void {
     this.mode = mode;
     this.runSeed = (Math.random() * 0xffffffff) >>> 0;
-    void this.startLevel(1);
+    void this.startLevel(level);
+  }
+
+  /** Remember which level Continue should start in the current mode. */
+  private saveProgress(level: number): void {
+    if (this.mode === 'static') this.save.currentLevel = level;
+    else this.save.currentLevelMovable = level;
+    writeSave(this.save);
   }
 
   private async startLevel(n: number): Promise<void> {
@@ -234,9 +233,10 @@ export class Game {
     this.state = 'playing';
     this.elapsed = 0;
     this.hintShown = false;
-    this.remaining = this.cfg.timeLimit;
+    this.saveProgress(n);
     this.hud.setLevel(n);
-    this.hud.setTimer(this.remaining);
+    this.hud.setTimer(0);
+    this.hud.setBest(this.save.bestTimes[this.bestKey(n)]);
     this.hud.setKeys((this.touch ? TOUCH_HINT : KEYS_HINT)[this.mode]);
     this.setHolding(false);
     this.hud.hideOverlay();
@@ -279,8 +279,7 @@ export class Game {
     }
     this.clearLevel();
     this.level = n;
-    const base = levelConfig(n, this.runSeed);
-    this.cfg = { ...base, timeLimit: Math.round(base.timeLimit * MOVABLE_TIME_FACTOR) };
+    this.cfg = levelConfig(n, this.runSeed);
     const needle = new Needle(this.cfg, false);
     const physics = await PhysicsHay.create(this.cfg, needle, this.world.barn);
     if (token !== this.buildToken) {

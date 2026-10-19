@@ -8,8 +8,6 @@ export interface LevelConfig {
   needleContrast: number;
   /** How far below the hay surface the needle sits (metres). */
   needleDepth: number;
-  /** Seconds. */
-  timeLimit: number;
   /** Seconds before the hint glint appears. */
   hintDelay: number;
 }
@@ -25,7 +23,6 @@ export function levelConfig(level: number, runSeed: number): LevelConfig {
     needleRadius: Math.max(0.006, needleLength * 0.035),
     needleContrast: Math.max(0.15, 1 - 0.14 * n),
     needleDepth: Math.min(0.7, 0.05 + 0.1 * n),
-    timeLimit: Math.max(45, 120 - 8 * n),
     hintDelay: Math.max(12, 30 - 2 * n),
   };
 }
