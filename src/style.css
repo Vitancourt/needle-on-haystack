@@ -90,3 +90,66 @@ html, body {
 }
 
 #crosshair.holding { background: rgba(255, 255, 255, 0.9); }
+
+/* ---- touch controls ----------------------------------------------------- */
+
+body:not(.touch) .touch-only { display: none; }
+
+body.touch #game, #touch { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+#touch { position: absolute; inset: 0; pointer-events: auto; }
+
+#stick {
+  position: absolute;
+  left: calc(24px + env(safe-area-inset-left));
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  width: 128px; height: 128px; border-radius: 50%;
+  background: rgba(27, 26, 20, 0.35);
+  border: 2px solid rgba(251, 246, 230, 0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+#stick-knob {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(251, 246, 230, 0.75);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+#touch button {
+  font: inherit; font-weight: 700; color: var(--text);
+  border: 1px solid rgba(224, 184, 74, 0.6); border-radius: 999px;
+  background: var(--panel);
+}
+
+#touch #touch-grab {
+  position: absolute;
+  right: calc(28px + env(safe-area-inset-right));
+  bottom: calc(52px + env(safe-area-inset-bottom));
+  width: 96px; height: 96px;
+  font-size: 1.1rem;
+  background: var(--accent); color: var(--accent-text); border: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+#touch-grab:active { filter: brightness(1.15); }
+
+.touch-top {
+  position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 8px;
+}
+.touch-top button { padding: 6px 14px; font-size: 0.85rem; }
+
+body.touch .hud-top { top: calc(16px + env(safe-area-inset-top)); left: calc(16px + env(safe-area-inset-left)); right: calc(16px + env(safe-area-inset-right)); }
+body.touch .hud-keys { bottom: calc(8px + env(safe-area-inset-bottom)); left: 170px; right: 140px; font-size: 0.75rem; }
+body.touch #fps { bottom: auto; top: calc(52px + env(safe-area-inset-top)); }
+
+/* Short screens (phones in landscape): keep the whole menu on screen. */
+.panel { max-height: 100%; overflow-y: auto; }
+@media (max-height: 520px) {
+  #overlay { padding: 8px; }
+  .panel { padding: 14px 20px; }
+  .panel h1 { font-size: 1.4rem; margin-bottom: 6px; }
+  .panel p { margin-bottom: 4px; font-size: 0.9rem; line-height: 1.3; }
+  .panel .actions { flex-direction: row; gap: 8px; margin-top: 8px; }
+  .panel .actions button { flex: 1; padding: 10px 12px; font-size: 0.95rem; }
+}

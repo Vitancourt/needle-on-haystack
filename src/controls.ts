@@ -4,6 +4,7 @@ import { BARN_HALF, EYE_HEIGHT, STALL_DEPTH, PLAYER_MIN_RADIUS, PLAYER_START_Z }
 
 const WALK_SPEED = 4;
 const SPRINT_SPEED = 7;
+const MAX_PITCH = Math.PI / 2 - 0.01;
 
 export class Player {
   readonly controls: PointerLockControls;
@@ -12,8 +13,17 @@ export class Player {
   minRadius = PLAYER_MIN_RADIUS;
   /** Extra obstacle test (the movable pile): return true if the player may not stand at (x, z). */
   blocked: ((x: number, z: number) => boolean) | null = null;
+  /** Analog walk input from the touch joystick (x = right, y = forward, each -1..1). */
+  readonly move = { x: 0, y: 0 };
+  /** Touch devices have no pointer lock; this stands in for it. */
+  private touchActive = false;
+  private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-  constructor(private readonly camera: THREE.PerspectiveCamera, dom: HTMLElement) {
+  constructor(
+    private readonly camera: THREE.PerspectiveCamera,
+    dom: HTMLElement,
+    private readonly touch = false,
+  ) {
     this.controls = new PointerLockControls(camera, dom);
     window.addEventListener('keydown', (e) => this.keys.add(e.code));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -21,15 +31,28 @@ export class Player {
   }
 
   get isLocked(): boolean {
-    return this.controls.isLocked;
+    return this.touch ? this.touchActive : this.controls.isLocked;
   }
 
   lock(): void {
-    this.controls.lock();
+    if (!this.touch) return this.controls.lock();
+    this.touchActive = true;
+    this.controls.dispatchEvent({ type: 'lock' });
   }
 
   unlock(): void {
-    this.controls.unlock();
+    if (!this.touch) return this.controls.unlock();
+    if (!this.touchActive) return;
+    this.touchActive = false;
+    this.controls.dispatchEvent({ type: 'unlock' });
+  }
+
+  /** Turn the camera by the given yaw/pitch deltas in radians (touch look). */
+  look(dx: number, dy: number): void {
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.y -= dx;
+    this.euler.x = THREE.MathUtils.clamp(this.euler.x - dy, -MAX_PITCH, MAX_PITCH);
+    this.camera.quaternion.setFromEuler(this.euler);
   }
 
   reset(): void {
@@ -38,17 +61,21 @@ export class Player {
   }
 
   update(dt: number): void {
-    if (!this.controls.isLocked) return;
+    if (!this.isLocked) return;
     const k = this.keys;
     let forward = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
     let right = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
+    forward += this.move.y;
+    right += this.move.x;
     const len = Math.hypot(forward, right);
     const px = this.camera.position.x;
     const pz = this.camera.position.z;
     if (len > 0) {
       const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? SPRINT_SPEED : WALK_SPEED) * dt;
-      forward = (forward / len) * speed;
-      right = (right / len) * speed;
+      // Keys give full speed in any direction; a half-pushed joystick walks slower.
+      const scale = speed / Math.max(len, 1);
+      forward *= scale;
+      right *= scale;
       this.controls.moveForward(forward);
       this.controls.moveRight(right);
     }

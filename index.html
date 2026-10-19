@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <title>Needle on Haystack</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪡</text></svg>" />
   </head>
@@ -16,6 +16,14 @@
       </div>
       <div id="crosshair"></div>
       <div class="hud-keys" id="hud-keys"></div>
+      <div id="touch" class="touch-only">
+        <div id="stick"><div id="stick-knob"></div></div>
+        <button type="button" id="touch-grab">Grab</button>
+        <div class="touch-top">
+          <button type="button" id="touch-pause" aria-label="Pause">Pause</button>
+          <button type="button" id="touch-mute" aria-label="Toggle sound">Sound</button>
+        </div>
+      </div>
     </div>
 
     <div id="overlay" hidden role="dialog" aria-live="polite">

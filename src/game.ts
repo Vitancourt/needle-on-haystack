@@ -9,6 +9,7 @@ import { Needle } from './needle.ts';
 import { PhysicsHay } from './physicsHay.ts';
 import type { World } from './scene.ts';
 import { loadSave, writeSave } from './storage.ts';
+import { TouchControls, isTouchDevice } from './touch.ts';
 
 export type Mode = 'static' | 'movable';
 type State = 'menu' | 'loading' | 'playing' | 'paused' | 'won' | 'lost';
@@ -22,10 +23,17 @@ const KEYS_HINT: Record<Mode, string> = {
   movable: 'WASD move · Shift sprint · Click hay to pick up, click again to drop · Click the needle to win · Esc pause · M mute',
 };
 
+const TOUCH_HINT: Record<Mode, string> = {
+  static: 'Stick to walk · Drag to look · Aim at the needle and press Grab',
+  movable: 'Stick to walk · Drag to look · Grab picks up / drops hay · Grab the needle to win',
+};
+
 export class Game {
   private state: State = 'menu';
   private mode: Mode = 'static';
   private readonly player: Player;
+  private readonly touch = isTouchDevice();
+  private readonly touchControls: TouchControls | null = null;
   private readonly hud = new Hud();
   private readonly save = loadSave();
   private readonly audio = new GameAudio(this.save.muted);
@@ -52,17 +60,30 @@ export class Game {
   private frameTime = 0;
 
   constructor(private readonly world: World) {
-    this.player = new Player(world.camera, world.renderer.domElement);
+    this.player = new Player(world.camera, world.renderer.domElement, this.touch);
+    if (this.touch) {
+      this.touchControls = new TouchControls(this.player, {
+        onGrab: () => this.interact(),
+        onPause: () => this.player.unlock(),
+        onMute: () => this.toggleMute(),
+      });
+    }
     this.player.controls.addEventListener('lock', () => {
       const run = this.pending;
       this.pending = null;
       run?.();
     });
     this.player.controls.addEventListener('unlock', () => {
+      this.touchControls?.reset();
       if (this.state === 'playing') this.pause();
     });
     document.addEventListener('pointerlockerror', () => this.hud.toast("Couldn't capture the mouse. Click again."));
-    document.addEventListener('click', () => this.onClick());
+    // On touch devices only the Grab button interacts, so stray taps never grab.
+    if (!this.touch) document.addEventListener('click', () => this.interact());
+    // Phones switch apps often; don't let the timer run in the background.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.state === 'playing') this.player.unlock();
+    });
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyM') this.toggleMute();
     });
@@ -112,7 +133,11 @@ export class Game {
       { text: 'A needle is hidden in the haystack. Find it before time runs out.', strong: true },
       { text: 'Static: a solid pile to search with your eyes.' },
       { text: 'Movable: every strand is physical. Pick hay up, carry it, drop it anywhere.' },
-      { text: 'WASD to walk, mouse to look, click to interact. Esc pauses.' },
+      {
+        text: this.touch
+          ? 'Use the stick to walk, drag to look, and the Grab button to interact.'
+          : 'WASD to walk, mouse to look, click to interact. Esc pauses.',
+      },
     ];
     const best = [this.save.highestLevel, this.save.highestLevelMovable];
     if (best[0] > 0 || best[1] > 0) lines.push({ text: `Your best: static level ${best[0]} · movable level ${best[1]}` });
@@ -212,8 +237,8 @@ export class Game {
     this.remaining = this.cfg.timeLimit;
     this.hud.setLevel(n);
     this.hud.setTimer(this.remaining);
-    this.hud.setKeys(KEYS_HINT[this.mode]);
-    this.hud.setHolding(false);
+    this.hud.setKeys((this.touch ? TOUCH_HINT : KEYS_HINT)[this.mode]);
+    this.setHolding(false);
     this.hud.hideOverlay();
     this.hud.showHud(true);
     this.audio.startAmbient();
@@ -274,12 +299,17 @@ export class Game {
 
   private releaseHeld(): void {
     this.physics?.release();
-    this.hud.setHolding(false);
+    this.setHolding(false);
+  }
+
+  private setHolding(holding: boolean): void {
+    this.hud.setHolding(holding);
+    this.touchControls?.setHolding(holding);
   }
 
   // ---- input -------------------------------------------------------------
 
-  private onClick(): void {
+  private interact(): void {
     if (this.state !== 'playing' || !this.player.isLocked || !this.needle) return;
     if (this.physics?.isHolding) {
       this.releaseHeld();
@@ -289,7 +319,7 @@ export class Game {
     if (this.needle.isHit(this.raycaster)) {
       this.win();
     } else if (this.physics?.grab(this.raycaster)) {
-      this.hud.setHolding(true);
+      this.setHolding(true);
     }
   }
 
